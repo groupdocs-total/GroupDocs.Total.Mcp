@@ -1,0 +1,48 @@
+<Project>
+
+  <PropertyGroup Label="SDK Versions">
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Reproducible build">
+    <Deterministic>true</Deterministic>
+    <!-- Normalizes paths inside .pdb/.dll on CI for reproducible output -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package information">
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/groupdocs-total/GroupDocs.Total.Mcp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/groupdocs-total/GroupDocs.Total.Mcp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Authors>GroupDocs Contributors</Authors>
+    <Company>Aspose</Company>
+    <Copyright>Copyright © Aspose Pty Ltd $([System.DateTime]::Now.Year)</Copyright>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>true</AllowedOutputExtensionsInPackageBuildOutputFolder>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package Versions">
+    <GroupDocsTotalMcp>26.5.0</GroupDocsTotalMcp>
+  </PropertyGroup>
+
+  <PropertyGroup Label="External Dependency Versions">
+    <GroupDocsMcpCore>26.4.1</GroupDocsMcpCore>
+    <GroupDocsTotal>26.4.0</GroupDocsTotal>
+    <MicrosoftExtensionsHosting>10.0.5</MicrosoftExtensionsHosting>
+    <ModelContextProtocol>1.1.0</ModelContextProtocol>
+    <MicrosoftSourceLinkGithub>8.0.0</MicrosoftSourceLinkGithub>
+    <!-- SkiaSharp: engine pins managed 3.119.0 but transitively pulls the
+         old 2.80.1 NativeAssets.Linux.NoDependencies, which is ABI-incompatible
+         with managed 3.x. Pin BOTH packages to matching 3.119.4 so the Linux
+         runtime resolves libSkiaSharp.so from the 3.x native asset. -->
+    <SkiaSharp>3.119.4</SkiaSharp>
+    <SkiaSharpNativeAssetsLinux>3.119.4</SkiaSharpNativeAssetsLinux>
+  </PropertyGroup>
+
+  <PropertyGroup Label="NuGet Common Settings">
+    <PackageReleaseNotes>https://github.com/groupdocs-total/GroupDocs.Total.Mcp/releases/tag/$(GroupDocsTotalMcp)</PackageReleaseNotes>
+  </PropertyGroup>
+
+</Project>

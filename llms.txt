@@ -1,0 +1,68 @@
+# GroupDocs.Total MCP Server
+
+Unified MCP server for the GroupDocs.Total document toolset — annotate, sign, convert, watermark, parse, redact, compose markdown, merge / split, read metadata, compare, plus cross-product document info and page preview. 38 AI-callable tools across 10 product domains, one MCP endpoint. Do NOT attach the per-product GroupDocs MCPs (Annotation.Mcp, Signature.Mcp, etc.) alongside — Total bundles all of them.
+
+## Install
+
+- With dnx (.NET 10 SDK, no install step): `dnx GroupDocs.Total.Mcp@26.5.0 --yes`
+- As a global dotnet tool: `dotnet tool install -g GroupDocs.Total.Mcp` then run `groupdocs-total-mcp`
+- As a Docker container: `docker run --rm -i -v $(pwd)/documents:/data ghcr.io/groupdocs-total/total-net-mcp:latest`
+- Native prerequisite for native (dnx / global tool) runs on Linux and macOS: install libgdiplus and MS core fonts — `sudo apt-get install -y libgdiplus libfontconfig1 ttf-mscorefonts-installer` on Linux, `brew install mono-libgdiplus` on macOS. Not needed on Windows (GDI+ built in) or in Docker (bundled in the image).
+
+## MCP tools
+
+Tool naming: cross-product tools are short (GetDocumentInfo, GetDocumentPageImage); per-product tools use `{Product}{Verb}{Noun}` PascalCase. Each tool's `[Description]` opens with `[GroupDocs.<Product>]` so AI agents can disambiguate.
+
+### Cross-product (2)
+- GetDocumentInfo — file type, page count, size as JSON (Parser engine, 170+ formats)
+- GetDocumentPageImage — render up to 5 pages as inline PNG images (Viewer engine)
+
+### Annotation (8)
+- AnnotationAddAnnotation, AnnotationGetAnnotations, AnnotationUpdateAnnotation, AnnotationRemoveAnnotations, AnnotationAddReply, AnnotationRemoveReplies, AnnotationImportAnnotations, AnnotationExportAnnotations
+
+### Signature (7)
+- SignatureSign, SignatureVerify, SignatureSearchTextSignatures, SignatureSearchBarcodes, SignatureSearchQrCodes, SignatureSearchDigitalSignatures, SignatureSearchImageSignatures
+
+### Comparison (1) · Conversion (2) · Markdown (2)
+- ComparisonCompare
+- ConversionConvert, ConversionGetSupportedFormats
+- MarkdownConvertToMarkdown, MarkdownComposeFromMarkdown
+
+### Merger (2) · Metadata (2)
+- MergerMerge, MergerSplit
+- MetadataReadMetadata, MetadataRemoveMetadata
+
+### Parser (5) · Redaction (4) · Watermark (3)
+- ParserExtractText, ParserExtractImages, ParserExtractTables, ParserExtractMetadata, ParserExtractBarcodes
+- RedactionRedactText, RedactionRedactImageArea, RedactionRedactAnnotations, RedactionEraseMetadata
+- WatermarkAddWatermark, WatermarkSearchWatermarks, WatermarkRemoveWatermarks
+
+## Skipped from the GroupDocs.Total engine bundle
+
+Editor / Assembly / Search are bundled but their MCP tools are NOT exposed in this release — these engines have parameter shapes (DataSource models, persistent index paths, schema-heavy edit DTOs) that AI agents struggle to specify well. Use the standalone per-product MCPs (when they exist) if you need them.
+
+## Supported formats
+
+170+ document and image formats including PDF, DOCX, XLSX, PPTX, ODT, ODP, ODS, RTF, HTML, EPUB, MOBI, JPEG, PNG, TIFF, CAD, EML, MSG, VSDX, XPS, MD, and many more (per the GroupDocs.Total bundle).
+
+## Environment variables
+
+- GROUPDOCS_MCP_STORAGE_PATH — base folder for input + output (defaults to current working directory)
+- GROUPDOCS_MCP_OUTPUT_PATH — optional, routes output files to a separate folder
+- GROUPDOCS_LICENSE_PATH — path to GroupDocs.Total.lic, omit for evaluation mode (the TotalLicenseManager applies the license to every bundled product engine)
+
+## Key links
+
+- NuGet: https://www.nuget.org/packages/GroupDocs.Total.Mcp
+- Repository: https://github.com/groupdocs-total/GroupDocs.Total.Mcp
+- Docker: ghcr.io/groupdocs-total/total-net-mcp and docker.io/groupdocs/total-net-mcp
+- MCP Registry: io.github.groupdocs-total/groupdocs-total-mcp
+- License: MIT
+
+## Example prompts for AI agents
+
+- "Convert contract.docx to PDF, sign it with a QR code 'Signed by Alice', then watermark every page with 'CONFIDENTIAL'"
+- "Compare old.pdf and new.pdf, list every annotation in the result, and preview page 1"
+- "Extract all tables from report.xlsx as Markdown and redact every email address"
+- "Read the metadata of every PDF in /uploads, then strip it, then preview the cleaned page 1 of each"
+- "Find every barcode in invoice.pdf, then merge invoice.pdf + receipt.pdf into combined.pdf"
