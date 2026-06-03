@@ -1,0 +1,113 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>GroupDocs.Total.Mcp</PackageId>
+    <Version>$(GroupDocsTotalMcp)</Version>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>Unified MCP server bundling the GroupDocs.Total for .NET document toolset — Annotation, Comparison, Conversion, Markdown, Merger, Metadata, Parser, Redaction, Signature, Watermark + cross-product preview and document info — exposed to AI agents via a single MCP endpoint.</Description>
+    <PackageTags>groupdocs;total;mcp;model-context-protocol;mcp-server;dotnet-tool;ai;document-processing;annotation;signature;conversion;watermark;parser;redaction</PackageTags>
+    <PackageIcon>images\icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IsPackable>true</IsPackable>
+    <!-- Package as a .NET tool so the nupkg gets the required tools/ layout
+         for `dnx` / `dotnet tool install` invocation. -->
+    <PackAsTool>true</PackAsTool>
+    <!-- Mark as MCP server for NuGet.org discovery (packagetype=McpServer filter).
+         NOTE: correct MSBuild property is singular <PackageType>; the plural form is ignored. -->
+    <PackageType>McpServer</PackageType>
+    <!-- CLI tool name for dnx / dotnet tool install invocation -->
+    <ToolCommandName>groupdocs-total-mcp</ToolCommandName>
+  </PropertyGroup>
+
+  <!-- Strip native debug symbols from the published tools/ output BEFORE pack
+       collects it. Critical for Total: bundling 14 product engines + Skia +
+       libgdiplus runtimes easily pushes the nupkg over NuGet.org's 250 MB
+       limit (HTTP 413 on push). Managed-code PDBs are preserved; only
+       runtimes/<rid>/native/*.pdb is removed. -->
+  <Target Name="StripNativeRuntimePdbs" AfterTargets="Publish">
+    <ItemGroup>
+      <_NativeRuntimePdbs Include="$(PublishDir)runtimes/**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_NativeRuntimePdbs)" />
+    <Message
+      Text="StripNativeRuntimePdbs: removed @(_NativeRuntimePdbs->Count()) native PDB file(s) from publish output to keep the nupkg under NuGet.org's 250 MB limit."
+      Importance="high"
+      Condition="@(_NativeRuntimePdbs->Count()) > 0" />
+  </Target>
+
+  <!-- Strip native runtimes that don't ship with a typical MCP server host:
+       iOS / Android / Linux-musl / loongarch64. The GroupDocs.Total nupkg pulls
+       SkiaSharp / ONNX runtime native binaries for every RID the engine
+       supports, which inflates the .NET-tool nupkg by ~120 MB without value
+       for a server-side scenario. dnx / dotnet tool consumers always run on
+       win-x64 / win-arm64 / linux-x64 / linux-arm64 / osx-x64 / osx-arm64.
+       Pitfall #12 (250 MB NuGet hard limit) — without this trim the nupkg
+       lands around 380 MB and `dotnet nuget push` returns HTTP 413. -->
+  <Target Name="StripExoticRuntimeAssets" AfterTargets="Publish">
+    <ItemGroup>
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/ios/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/android/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/iossimulator-arm64/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/iossimulator-x64/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/tvos*/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/maccatalyst*/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/linux-musl-**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/linux-bionic-**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/linux-loongarch64/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/*-loongarch64/**" />
+      <_ExoticRuntimes Include="$(PublishDir)runtimes/linux-arm/**" />
+    </ItemGroup>
+    <Delete Files="@(_ExoticRuntimes)" />
+    <Message
+      Text="StripExoticRuntimeAssets: removed @(_ExoticRuntimes->Count()) exotic-RID native file(s) (ios/android/musl/bionic/loongarch64/linux-arm) to fit under NuGet.org's 250 MB limit."
+      Importance="high"
+      Condition="@(_ExoticRuntimes->Count()) > 0" />
+  </Target>
+
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" Visible="false" PackagePath="images\icon.png" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="/" />
+    <!-- server.json — read by NuGet.org to generate mcp.json snippets on the package page -->
+    <None Include=".mcp\server.json" Pack="true" PackagePath=".mcp/server.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Core infrastructure — NuGet packages from groupdocs-mcp-core -->
+    <PackageReference Include="GroupDocs.Mcp.Core" Version="$(GroupDocsMcpCore)" />
+    <PackageReference Include="GroupDocs.Mcp.Local.Storage" Version="$(GroupDocsMcpCore)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Single metapackage that transitively pulls all 14 GroupDocs engines
+         (Annotation, Assembly, Comparison, Conversion, Editor, Markdown, Merger,
+         Metadata, Parser, Redaction, Search, Signature, Viewer, Watermark).
+         Tool implementations live inside this Mcp project as vendored sources —
+         we deliberately do NOT reference the per-product GroupDocs.{Product}.Mcp
+         packages (they are PackAsTool packages, not consumable as libraries). -->
+    <PackageReference Include="GroupDocs.Total" Version="$(GroupDocsTotal)" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="$(MicrosoftExtensionsHosting)" />
+    <PackageReference Include="ModelContextProtocol" Version="$(ModelContextProtocol)" />
+    <!-- SkiaSharp: GroupDocs.Total 26.4.0 pins SkiaSharp 3.119.0 and matching
+         NativeAssets.Linux.NoDependencies 3.119.0 in lockstep — but some
+         older transitive engine packages may still pull the old 2.x native
+         assets. Pin BOTH explicitly to a matching 3.119.4 so the Linux
+         runtime resolves libSkiaSharp.so from the 3.x native asset. -->
+    <PackageReference Include="SkiaSharp" Version="$(SkiaSharp)" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="$(SkiaSharpNativeAssetsLinux)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Many bundled engines (Annotation, Watermark, Signature, Viewer, Conversion,
+         Comparison) rasterise document pages or signature/annotation glyphs via
+         System.Drawing.Common; GetDocumentPageImage uses GroupDocs.Viewer for
+         cross-product PNG rendering. On non-Windows that throws
+         PlatformNotSupportedException unless this flag is set. Pair with
+         libgdiplus + libfontconfig1 + ttf-mscorefonts-installer in
+         docker/Dockerfile so glyph rendering succeeds on Linux. -->
+    <RuntimeHostConfigurationOption Include="System.Drawing.EnableUnixSupport" Value="true" />
+  </ItemGroup>
+
+</Project>
