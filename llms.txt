@@ -4,7 +4,7 @@ Unified MCP server for the GroupDocs.Total document toolset — annotate, sign, 
 
 ## Install
 
-- With dnx (.NET 10 SDK, no install step): `dnx GroupDocs.Total.Mcp@26.5.0 --yes`
+- With dnx (.NET 10 SDK, no install step): `dnx GroupDocs.Total.Mcp@26.7.0 --yes`
 - As a global dotnet tool: `dotnet tool install -g GroupDocs.Total.Mcp` then run `groupdocs-total-mcp`
 - As a Docker container: `docker run --rm -i -v $(pwd)/documents:/data ghcr.io/groupdocs-total/total-net-mcp:latest`
 - Native prerequisite for native (dnx / global tool) runs on Linux and macOS: install libgdiplus and MS core fonts — `sudo apt-get install -y libgdiplus libfontconfig1 ttf-mscorefonts-installer` on Linux, `brew install mono-libgdiplus` on macOS. Not needed on Windows (GDI+ built in) or in Docker (bundled in the image).

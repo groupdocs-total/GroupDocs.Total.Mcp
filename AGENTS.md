@@ -60,7 +60,7 @@ docker/Dockerfile                                          ← multi-stage, libg
 - `GroupDocs.Mcp.Core` + `GroupDocs.Mcp.Local.Storage` — infrastructure NuGet packages.
 - `ModelContextProtocol` 1.1.0 — MCP SDK for .NET.
 - `Microsoft.Extensions.Hosting` — host builder for the stdio server.
-- `SkiaSharp` + `SkiaSharp.NativeAssets.Linux.NoDependencies` — pinned to matching `3.119.4`. Total 26.4.0's transitive SkiaSharp is already 3.x but some older transitives may pull 2.x native assets; the explicit pin keeps Linux resolution coherent.
+- `SkiaSharp` + `SkiaSharp.NativeAssets.Linux.NoDependencies` — pinned to matching `3.119.4`. Total 26.6.0's transitive SkiaSharp is already 3.x but some older transitives may pull 2.x native assets; the explicit pin keeps Linux resolution coherent.
 
 We deliberately do NOT reference the per-product `GroupDocs.{Product}.Mcp` NuGet packages — they are `PackAsTool=true` packages and cannot be consumed as libraries. Tools live as vendored sources inside this project.
 
