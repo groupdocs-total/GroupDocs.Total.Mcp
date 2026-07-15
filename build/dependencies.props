@@ -24,12 +24,12 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Package Versions">
-    <GroupDocsTotalMcp>26.5.0</GroupDocsTotalMcp>
+    <GroupDocsTotalMcp>26.7.0</GroupDocsTotalMcp>
   </PropertyGroup>
 
   <PropertyGroup Label="External Dependency Versions">
     <GroupDocsMcpCore>26.4.1</GroupDocsMcpCore>
-    <GroupDocsTotal>26.4.0</GroupDocsTotal>
+    <GroupDocsTotal>26.6.0</GroupDocsTotal>
     <MicrosoftExtensionsHosting>10.0.5</MicrosoftExtensionsHosting>
     <ModelContextProtocol>1.1.0</ModelContextProtocol>
     <MicrosoftSourceLinkGithub>8.0.0</MicrosoftSourceLinkGithub>
