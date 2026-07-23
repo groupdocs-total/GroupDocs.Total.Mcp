@@ -19,6 +19,12 @@ jobs:
     # Branch dispatches without a version input are skipped so we never create a bogus tag/release.
     if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
     runs-on: windows-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      # 'true' when the built nupkg exceeds NuGet.org's 250 MB limit — the NuGet
+      # push + signing are skipped and this release ships via Docker/GHCR + the
+      # MCP Registry (OCI). Consumed by the publish_mcp_registry job.
+      oversize: ${{ steps.size.outputs.oversize }}
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       # Pinned via GitHub repo variable; fallback to 1.3.0 if unset
@@ -109,17 +115,66 @@ jobs:
           BUILD_TYPE: PROD
         run: .\build.ps1
 
+      # ───────────────────────────────────────────────────────────────────────────
+      # DOCKER-FIRST WORKAROUND — REVERT TO NUGET WHEN THE ENGINE FITS UNDER 250 MB
+      #
+      # GroupDocs.Total bundles every engine, including GroupDocs.Parser whose managed
+      # DLL embeds ~234 MB of ONNX models — so GroupDocs.Total.dll alone is ~314 MB and
+      # the packed nupkg is ~393 MB, over NuGet.org's 250 MB hard limit. Until upstream
+      # ships model-externalized / "lite" engines that pack under 250 MB, this product is
+      # released via Docker/GHCR + the MCP Registry (OCI) instead of NuGet.
+      #
+      # TO REVERT to the standard NuGet flow (identical to the other GroupDocs MCP products):
+      #   1. Remove this size-check step, the `oversize` job output (top of publish_prod),
+      #      and every `if: steps.size.outputs.oversize != 'true'` guard on the CodeSign +
+      #      NuGet-push steps below.
+      #   2. In the `publish_mcp_registry` job, drop the oversize/GHCR branch of the
+      #      "Wait for the release artifact" step — keep only the NuGet-index wait.
+      #   3. src/GroupDocs.Total.Mcp/.mcp/server.json → packages[0]: change back to
+      #        "registryType": "nuget",
+      #        "registryBaseUrl": "https://api.nuget.org/v3/index.json",
+      #        "identifier": "GroupDocs.Total.Mcp"
+      #      (JSON can't carry comments, so this note is the source of truth for that file.)
+      #   4. docker/Dockerfile: the io.modelcontextprotocol.server.name LABEL may stay
+      #      (harmless) or be removed.
+      #   5. Re-enable the NuGet/dnx integration suite in GroupDocs.Total.Mcp.Tests
+      #      (see its .github/workflows/integration.yml — currently skipped).
+      # ───────────────────────────────────────────────────────────────────────────
+      - name: Check nupkg size vs NuGet limit
+        id: size
+        shell: pwsh
+        run: |
+          # NuGet.org rejects packages over 250 MB (HTTP 413). GroupDocs.Total bundles
+          # every engine (incl. Parser's embedded ONNX models) so its nupkg is ~390 MB.
+          # Detect that and skip the NuGet push — the release still ships via Docker/GHCR
+          # + the MCP Registry (OCI). All other channels are unaffected.
+          $limitBytes = 250MB
+          $nupkg = Get-ChildItem "$env:GITHUB_WORKSPACE\build_out" -Filter *.nupkg |
+                   Sort-Object Length -Descending | Select-Object -First 1
+          if (-not $nupkg) { Write-Error "Build produced no .nupkg in build_out."; exit 1 }
+          $sizeMB = [math]::Round($nupkg.Length / 1MB, 1)
+          if ($nupkg.Length -gt $limitBytes) {
+            Write-Host "::warning::$($nupkg.Name) is $sizeMB MB (> NuGet's 250 MB limit). Skipping NuGet push + signing; releasing via Docker/GHCR + MCP Registry (OCI)."
+            "oversize=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            Write-Host "$($nupkg.Name) is $sizeMB MB (<= 250 MB) — normal NuGet release."
+            "oversize=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
       - name: Download CodeSignTool
+        if: steps.size.outputs.oversize != 'true'
         run: |
           $version = $env:CODE_SIGN_TOOL_VERSION
           Invoke-WebRequest -Uri "https://github.com/SSLcom/CodeSignTool/releases/download/v$version/CodeSignTool-v$version-windows.zip" -OutFile codesign.zip
 
       - name: Unpack CodeSignTool
+        if: steps.size.outputs.oversize != 'true'
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\code_sign" | Out-Null
           Expand-Archive -Path codesign.zip -DestinationPath "$env:GITHUB_WORKSPACE\code_sign" -Force
 
       - name: Configure CodeSignTool
+        if: steps.size.outputs.oversize != 'true'
         env:
           CODE_SIGN_CLIENT_ID: ${{ secrets.CODE_SIGN_CLIENT_ID }}
         run: |
@@ -135,11 +190,13 @@ jobs:
           Set-Content -Path $confPath -Value $lines
 
       - name: Prepare artifacts directory
+        if: steps.size.outputs.oversize != 'true'
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\artifacts" | Out-Null
           Move-Item "$env:GITHUB_WORKSPACE\build_out\*" "$env:GITHUB_WORKSPACE\artifacts" -Exclude *.nupkg -Force
 
       - name: Sign packages with SSL.com eSigner
+        if: steps.size.outputs.oversize != 'true'
         # Per-file signing with a 3-minute delay before each call. SSL.com eSigner
         # throttles rapid successive TOTP-authenticated sign operations; batching or
         # back-to-back signs intermittently fail, so we space them out deterministically.
@@ -168,6 +225,7 @@ jobs:
           }
 
       - name: Verify all packages were signed
+        if: steps.size.outputs.oversize != 'true'
         shell: pwsh
         run: |
           $expected = @(Get-ChildItem "$env:GITHUB_WORKSPACE\build_out" -Filter *.nupkg)
@@ -184,12 +242,14 @@ jobs:
           }
           Write-Host "Signing verified: $($signed.Count) of $($expected.Count) packages present in artifacts."
 
-      - name: Publish to Prod
+      - name: Publish to Prod (NuGet push)
+        if: steps.size.outputs.oversize != 'true'
         env:
           NUGET_API_KEY_PROD: ${{ secrets.NUGET_API_KEY_PROD }}
         run: .\publish-prod.ps1
 
       - name: Archive packages
+        if: steps.size.outputs.oversize != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: artifacts
@@ -251,26 +311,47 @@ jobs:
           tar -xzf mcp-publisher.tar.gz
           chmod +x mcp-publisher
 
-      - name: Wait for NuGet.org to index the new version
-        # MCP Registry's NuGet ownership check queries api.nuget.org's V3 flat-container index.
-        # That index lags `dotnet nuget push` by 1–30+ min (malware scan + signature validation
-        # + CDN propagation). For large nupkgs (≈ 200+ MB) the lag routinely exceeds 10 min.
-        # Poll up to 20 min before giving up. Must run BEFORE the OIDC login: the registry JWT
-        # issued by `mcp-publisher login` is short-lived (~5 min) and would expire while we wait.
+      - name: Wait for the release artifact to be available
+        # The MCP Registry verifies ownership by fetching the artifact referenced in
+        # server.json. Oversize releases reference the GHCR (OCI) image; normal releases
+        # reference the NuGet package. Poll the right source. Must run BEFORE the OIDC
+        # login — the registry JWT from `mcp-publisher login` is short-lived (~5 min) and
+        # would expire during a long wait.
+        env:
+          OVERSIZE: ${{ needs.publish_prod.outputs.oversize }}
         run: |
           VERSION=$(jq -r '.version' src/GroupDocs.Total.Mcp/.mcp/server.json)
-          echo "Waiting for NuGet.org V3 index to list GroupDocs.Total.Mcp $VERSION..."
-          for attempt in $(seq 1 20); do
-            if curl -fsSL "https://api.nuget.org/v3-flatcontainer/groupdocs.total.mcp/index.json" 2>/dev/null \
-                 | jq -e --arg v "$VERSION" '.versions | index($v)' > /dev/null 2>&1; then
-              echo "Indexed after $attempt attempt(s) (~$((attempt * 60))s)."
-              exit 0
-            fi
-            echo "Attempt $attempt/20: not indexed yet, sleeping 60s..."
-            sleep 60
-          done
-          echo "::error::NuGet.org did not index $VERSION within 20 minutes. Re-run this job from the Actions UI once https://www.nuget.org/packages/GroupDocs.Total.Mcp/$VERSION returns HTTP 200 — dotnet nuget push --skip-duplicate is idempotent so the publish step will not double-push."
-          exit 1
+          if [ "$OVERSIZE" = "true" ]; then
+            IMAGE="groupdocs-total/total-net-mcp"
+            echo "Oversize release — waiting for GHCR image ghcr.io/$IMAGE:$VERSION (pushed by publish_docker.yml)..."
+            for attempt in $(seq 1 20); do
+              TOKEN=$(curl -fsSL "https://ghcr.io/token?scope=repository:$IMAGE:pull" | jq -r .token)
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+                       -H "Authorization: Bearer $TOKEN" \
+                       -H "Accept: application/vnd.oci.image.index.v1+json" \
+                       -H "Accept: application/vnd.docker.distribution.manifest.list.v2+json" \
+                       -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                       "https://ghcr.io/v2/$IMAGE/manifests/$VERSION")
+              if [ "$CODE" = "200" ]; then echo "GHCR image present after ~$((attempt * 30))s."; exit 0; fi
+              echo "Attempt $attempt/20: image not on GHCR yet (HTTP $CODE), sleeping 30s..."
+              sleep 30
+            done
+            echo "::error::GHCR image ghcr.io/$IMAGE:$VERSION not available within ~10 min. Ensure the Publish Docker Image workflow succeeded for this tag, then re-run this job."
+            exit 1
+          else
+            echo "Waiting for NuGet.org V3 index to list GroupDocs.Total.Mcp $VERSION..."
+            for attempt in $(seq 1 20); do
+              if curl -fsSL "https://api.nuget.org/v3-flatcontainer/groupdocs.total.mcp/index.json" 2>/dev/null \
+                   | jq -e --arg v "$VERSION" '.versions | index($v)' > /dev/null 2>&1; then
+                echo "Indexed after $attempt attempt(s) (~$((attempt * 60))s)."
+                exit 0
+              fi
+              echo "Attempt $attempt/20: not indexed yet, sleeping 60s..."
+              sleep 60
+            done
+            echo "::error::NuGet.org did not index $VERSION within 20 minutes. Re-run once https://www.nuget.org/packages/GroupDocs.Total.Mcp/$VERSION returns HTTP 200 — dotnet nuget push --skip-duplicate is idempotent."
+            exit 1
+          fi
 
       - name: Authenticate with GitHub OIDC
         run: ./mcp-publisher login github-oidc

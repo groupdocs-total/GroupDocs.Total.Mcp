@@ -5,14 +5,12 @@
   "version": "26.7.0",
   "packages": [
     {
-      "registryType": "nuget",
-      "registryBaseUrl": "https://api.nuget.org/v3/index.json",
-      "identifier": "GroupDocs.Total.Mcp",
+      "registryType": "oci",
+      "identifier": "ghcr.io/groupdocs-total/total-net-mcp:26.7.0",
       "version": "26.7.0",
       "transport": {
         "type": "stdio"
       },
-      "packageArguments": [],
       "environmentVariables": [
         {
           "name": "GROUPDOCS_MCP_STORAGE_PATH",

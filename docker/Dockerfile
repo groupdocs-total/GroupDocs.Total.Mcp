@@ -34,11 +34,15 @@ RUN apt-get update \
 # --build-arg VERSION=YY.M.N. Default 'dev' makes local `docker build` runs
 # self-identify instead of inheriting the base image's misleading version.
 ARG VERSION=dev
-LABEL org.opencontainers.image.title="GroupDocs.Total.Mcp" \
+# DOCKER-FIRST: the io.modelcontextprotocol.server.name label lets the MCP Registry
+# verify ownership of this GHCR image, which is how Total is published while its nupkg
+# is too big for NuGet (>250 MB). Revert plan: .github/workflows/publish_prod.yml.
+LABEL io.modelcontextprotocol.server.name="io.github.groupdocs-total/groupdocs-total-mcp" \
+      org.opencontainers.image.title="GroupDocs.Total.Mcp" \
       org.opencontainers.image.description="Unified MCP server exposing GroupDocs.Total for .NET as 38 AI-callable tools across 10 product domains (Annotation, Comparison, Conversion, Markdown, Merger, Metadata, Parser, Redaction, Signature, Watermark) + cross-product GetDocumentInfo and GetDocumentPageImage. One MCP endpoint, no per-product server attachments needed." \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.source="https://github.com/groupdocs-total/GroupDocs.Total.Mcp" \
-      org.opencontainers.image.url="https://www.nuget.org/packages/GroupDocs.Total.Mcp" \
+      org.opencontainers.image.url="https://github.com/groupdocs-total/GroupDocs.Total.Mcp/pkgs/container/total-net-mcp" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.vendor="Aspose Pty Ltd"
 
