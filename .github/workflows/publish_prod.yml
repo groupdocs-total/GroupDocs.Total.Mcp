@@ -32,7 +32,14 @@ jobs:
     permissions:
       contents: write         # required to create GitHub Release
     steps:
-      - name: Verify required secrets are configured
+      # DOCKER-FIRST WORKAROUND — the CodeSign + NuGet-push secrets below are only used
+      # by the size-gated steps that are SKIPPED for oversize releases (see the size-check
+      # step and its `if: steps.size.outputs.oversize != 'true'` guards). GroupDocs.Total
+      # always packs oversize, so these secrets are never consumed here. The pre-flight
+      # therefore only WARNS about missing ones instead of hard-failing the release.
+      # REVERT TO NUGET: when the packed size drops under 250 MB and the size-gate is
+      # removed, restore this to a hard failure (`Write-Error` + `exit 1`).
+      - name: Verify optional signing/NuGet secrets
         shell: pwsh
         env:
           CODE_SIGN_CLIENT_ID: ${{ secrets.CODE_SIGN_CLIENT_ID }}
@@ -41,7 +48,7 @@ jobs:
           ES_TOTP_SECRET:      ${{ secrets.ES_TOTP_SECRET }}
           NUGET_API_KEY_PROD:  ${{ secrets.NUGET_API_KEY_PROD }}
         run: |
-          $required = @(
+          $optional = @(
             'CODE_SIGN_CLIENT_ID',
             'ES_USERNAME',
             'ES_PASSWORD',
@@ -49,16 +56,16 @@ jobs:
             'NUGET_API_KEY_PROD'
           )
           $missing = @()
-          foreach ($name in $required) {
+          foreach ($name in $optional) {
             if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
               $missing += $name
             }
           }
           if ($missing.Count -gt 0) {
-            Write-Error "Missing required secrets: $($missing -join ', '). Configure under Settings -> Secrets and variables -> Actions."
-            exit 1
+            Write-Warning "Signing/NuGet secrets not set: $($missing -join ', '). These are only used for the NuGet-sized publish path, which is skipped for oversize (Docker-first) releases — continuing."
+          } else {
+            Write-Host "All signing/NuGet secrets present."
           }
-          Write-Host "All required secrets present."
 
       - name: Checkout
         uses: actions/checkout@v4
