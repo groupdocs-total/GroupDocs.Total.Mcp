@@ -1,0 +1,16 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "storage_path",
+      "description": "Base folder for input and output files.",
+      "password": false
+    }
+  ],
+  "servers": {
+    "groupdocs-total": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-v", "${input:storage_path}:/data", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "groupdocs-total": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "-v", "/path/to/documents:/data", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
+    }
+  }
+}

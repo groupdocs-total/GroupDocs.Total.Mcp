@@ -1,0 +1,11 @@
+{
+  "$comment": "Canonical MCP install config - the SINGLE source all generated install snippets, deeplinks, and README install blocks derive from. Edit this file, then run install/generate-install-links.ps1 to regenerate install/generated/ and the README install-buttons block. CI fails if they drift. This product is DOCKER-FIRST: the packed tool exceeds NuGet.org's 250 MB limit, so there is no dnx/NuGet path - command is docker and the image lives on GHCR only. The release VERSION is read from build/dependencies.props (<GroupDocsTotalMcp>) at generation time.",
+  "name": "groupdocs-total",
+  "displayName": "GroupDocs Total",
+  "packageId": "GroupDocs.Total.Mcp",
+  "registryName": "io.github.groupdocs-total/groupdocs-total-mcp",
+  "ghcrImage": "ghcr.io/groupdocs-total/total-net-mcp",
+  "testsRepo": "groupdocs-total/GroupDocs.Total.Mcp.Tests",
+  "command": "docker",
+  "args": ["run", "--rm", "-i", "-v", "/path/to/documents:/data", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
+}

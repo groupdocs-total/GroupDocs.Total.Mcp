@@ -4,10 +4,9 @@ Unified MCP server for the GroupDocs.Total document toolset — annotate, sign, 
 
 ## Install
 
-- With dnx (.NET 10 SDK, no install step): `dnx GroupDocs.Total.Mcp@26.7.0 --yes`
-- As a global dotnet tool: `dotnet tool install -g GroupDocs.Total.Mcp` then run `groupdocs-total-mcp`
+Docker-first product - the packed tool exceeds NuGet.org's 250 MB limit, so there is no dnx / NuGet path. Multi-arch image (amd64 + arm64) on GHCR only; pin by replacing :latest with a version tag.
+
 - As a Docker container: `docker run --rm -i -v $(pwd)/documents:/data ghcr.io/groupdocs-total/total-net-mcp:latest`
-- Native prerequisite for native (dnx / global tool) runs on Linux and macOS: install libgdiplus and MS core fonts — `sudo apt-get install -y libgdiplus libfontconfig1 ttf-mscorefonts-installer` on Linux, `brew install mono-libgdiplus` on macOS. Not needed on Windows (GDI+ built in) or in Docker (bundled in the image).
 
 ## MCP tools
 
@@ -51,9 +50,13 @@ Editor / Assembly / Search are bundled but their MCP tools are NOT exposed in th
 - GROUPDOCS_MCP_OUTPUT_PATH — optional, routes output files to a separate folder
 - GROUPDOCS_LICENSE_PATH — path to GroupDocs.Total.lic, omit for evaluation mode (the TotalLicenseManager applies the license to every bundled product engine)
 
+## Licensing
+
+The MCP server is MIT; the underlying GroupDocs engines require a license for production use. Evaluation mode (no license): Each bundled engine applies its own evaluation limits: output watermarks / evaluation notices, page limits, and per-process document-open caps (1-15 documents depending on the engine). Mount GroupDocs.Total.lic into the container and set GROUPDOCS_LICENSE_PATH. Free 30-day temporary license: https://purchase.groupdocs.com/temporary-license/ - purchase: https://purchase.groupdocs.com/pricing/total/net
+
 ## Key links
 
-- NuGet: https://www.nuget.org/packages/GroupDocs.Total.Mcp
+- GHCR package: https://github.com/orgs/groupdocs-total/packages/container/package/total-net-mcp
 - Repository: https://github.com/groupdocs-total/GroupDocs.Total.Mcp
 - Docker: ghcr.io/groupdocs-total/total-net-mcp and docker.io/groupdocs/total-net-mcp
 - MCP Registry: io.github.groupdocs-total/groupdocs-total-mcp
