@@ -45,8 +45,19 @@ function Assert-ServerJsonVersionMatchesDependencies {
     $pattern = '"version"\s*:\s*"' + [regex]::Escape($expectedVersion) + '"'
     $matchCount = [regex]::Matches($serverJsonText, $pattern).Count
 
-    if ($matchCount -ne 2) {
-        throw "server.json version mismatch: expected both top-level and packages[0] 'version' = '$expectedVersion' (from <$VersionPropertyName> in $DepsPropsPath). Found $matchCount occurrence(s). Update $ServerJsonPath and try again."
+    # DOCKER-FIRST: this product publishes an OCI package, and the MCP Registry rejects
+    # an OCI package that carries a 'version' field — the version lives in the identifier
+    # tag (ghcr.io/...:x.y.z) instead. So expect exactly ONE 'version' (top-level) plus a
+    # correctly tagged identifier.
+    # REVERT TO NUGET: when the nuget package block returns (with its own 'version'),
+    # restore this to `-ne 2` and drop the identifier-tag assertion below.
+    if ($matchCount -ne 1) {
+        throw "server.json version mismatch: expected exactly one top-level 'version' = '$expectedVersion' (from <$VersionPropertyName> in $DepsPropsPath). Found $matchCount occurrence(s). Update $ServerJsonPath and try again."
+    }
+
+    $tagPattern = '"identifier"\s*:\s*"ghcr\.io/[^"]+:' + [regex]::Escape($expectedVersion) + '"'
+    if ([regex]::Matches($serverJsonText, $tagPattern).Count -ne 1) {
+        throw "server.json OCI identifier is not tagged ':$expectedVersion'. Update $ServerJsonPath and try again."
     }
     Write-Host "build: server.json version '$expectedVersion' matches dependencies.props"
 }
