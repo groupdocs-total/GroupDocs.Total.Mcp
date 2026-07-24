@@ -22,20 +22,26 @@ jobs:
       packages: write
 
     steps:
-      - name: Verify required secrets are configured
+      # DOCKER-FIRST: GHCR is the release-critical registry — .mcp/server.json publishes
+      # an OCI package pointing at ghcr.io, and GHCR authenticates with the built-in
+      # GITHUB_TOKEN (no secret needed). The Docker Hub mirror is best-effort: if
+      # DOCKERHUB_USERNAME/TOKEN are not configured for this org, we skip the Hub login
+      # and push GHCR tags only, rather than failing the whole release.
+      # To enable the Hub mirror later, just add the two secrets — no workflow change.
+      - name: Determine available registries
+        id: reg
         shell: bash
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
-          missing=()
-          [[ -z "$DOCKERHUB_USERNAME" ]] && missing+=("DOCKERHUB_USERNAME")
-          [[ -z "$DOCKERHUB_TOKEN" ]] && missing+=("DOCKERHUB_TOKEN")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing required secrets: ${missing[*]}. Configure under Settings -> Secrets and variables -> Actions."
-            exit 1
+          if [[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]]; then
+            echo "dockerhub=true" >> $GITHUB_OUTPUT
+            echo "Docker Hub credentials present - will mirror to Docker Hub."
+          else
+            echo "dockerhub=false" >> $GITHUB_OUTPUT
+            echo "::warning::DOCKERHUB_USERNAME/DOCKERHUB_TOKEN not set - pushing to GHCR only."
           fi
-          echo "All required secrets present."
 
       - uses: actions/checkout@v4
 
@@ -80,10 +86,28 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
+        if: steps.reg.outputs.dockerhub == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build the tag list here rather than inline: GHCR always, Docker Hub only when
+      # its credentials exist. Multi-line step output uses the heredoc delimiter form.
+      - name: Compose image tags
+        id: tags
+        shell: bash
+        run: |
+          {
+            echo "list<<TAGS_EOF"
+            echo "${{ steps.images.outputs.ghcr }}:${{ steps.version.outputs.version }}"
+            echo "${{ steps.images.outputs.ghcr }}:latest"
+            if [[ "${{ steps.reg.outputs.dockerhub }}" == "true" ]]; then
+              echo "${{ steps.images.outputs.dockerhub }}:${{ steps.version.outputs.version }}"
+              echo "${{ steps.images.outputs.dockerhub }}:latest"
+            fi
+            echo "TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -94,10 +118,6 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             VERSION=${{ steps.version.outputs.version }}
-          tags: |
-            ${{ steps.images.outputs.ghcr }}:${{ steps.version.outputs.version }}
-            ${{ steps.images.outputs.ghcr }}:latest
-            ${{ steps.images.outputs.dockerhub }}:${{ steps.version.outputs.version }}
-            ${{ steps.images.outputs.dockerhub }}:latest
+          tags: ${{ steps.tags.outputs.list }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
