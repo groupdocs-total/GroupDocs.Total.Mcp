@@ -101,11 +101,22 @@ jobs:
           }
 
           # Confirm .mcp/server.json matches too (build.ps1 has its own check, but fail fast here before rest of pipeline).
+          # DOCKER-FIRST: the OCI package carries its version ONLY in the identifier tag
+          # (ghcr.io/...:x.y.z) — the MCP Registry rejects an OCI package that also has a
+          # 'version' field. So server.json has exactly ONE 'version' (top-level) plus the
+          # tag on the identifier; both must match the release version.
+          # REVERT TO NUGET: when the nuget package block returns (with its own 'version'),
+          # restore the two-field check ($count -ne 2) and drop the identifier-tag check.
           $serverJson = Get-Content src/GroupDocs.Total.Mcp/.mcp/server.json -Raw
           $pattern = '"version"\s*:\s*"' + [regex]::Escape($version) + '"'
           $count = [regex]::Matches($serverJson, $pattern).Count
-          if ($count -ne 2) {
-            Write-Error "server.json version drift: expected both 'version' fields = '$version' (found $count of 2). Update src/GroupDocs.Total.Mcp/.mcp/server.json and try again."
+          if ($count -ne 1) {
+            Write-Error "server.json version drift: expected exactly one 'version' field = '$version' (found $count). Update src/GroupDocs.Total.Mcp/.mcp/server.json and try again."
+            exit 1
+          }
+          $tagPattern = '"identifier"\s*:\s*"ghcr\.io/[^"]+:' + [regex]::Escape($version) + '"'
+          if ([regex]::Matches($serverJson, $tagPattern).Count -ne 1) {
+            Write-Error "server.json OCI identifier does not carry the ':$version' tag. Update src/GroupDocs.Total.Mcp/.mcp/server.json and try again."
             exit 1
           }
 
