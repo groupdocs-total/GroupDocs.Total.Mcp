@@ -7,7 +7,6 @@
     {
       "registryType": "oci",
       "identifier": "ghcr.io/groupdocs-total/total-net-mcp:26.7.1",
-      "version": "26.7.1",
       "transport": {
         "type": "stdio"
       },
