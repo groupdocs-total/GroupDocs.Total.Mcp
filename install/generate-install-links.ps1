@@ -199,6 +199,37 @@ Settings -> Tools -> AI Assistant -> Model Context Protocol (MCP) -> Add. Choose
 $pinNote
 "@
 
+$files['codex.md'] = @"
+# Codex CLI (OpenAI)
+
+``````bash
+codex mcp add $name -- $cliLine
+``````
+
+Or add to ``~/.codex/config.toml``:
+
+``````toml
+[mcp_servers.$name]
+command = "$($cfg.command)"
+args = $argsJson
+``````
+
+$pinNote
+"@
+
+$files['windsurf.md'] = @"
+# Windsurf
+
+Windsurf has no MCP CLI - add the server via its config file:
+
+1. Open Windsurf -> Settings -> Cascade -> Manage MCP servers -> View raw config
+   (or edit ``~/.codeium/windsurf/mcp_config.json`` directly).
+2. Merge in the contents of ``windsurf.json`` from this folder.
+3. Refresh the MCP server list.
+
+$pinNote
+"@
+
 $files['install-links.md'] = @"
 # Generated install links - $($cfg.displayName) MCP (source: install/config.json, version $version)
 
@@ -222,7 +253,10 @@ $readmeBlock = @"
 $badgeVsCode $badgeInsiders $badgeCursor
 
 > One-click installs write a config with a placeholder documents path - edit the
-> volume mount in the written entry after install (examples in [``install/generated/``](install/generated/)).
+> volume mount in the written entry after install.
+>
+> **More clients** - ready-made configs for Claude Code, Codex CLI, Visual Studio 2022,
+> Cursor, Windsurf, Cline, and JetBrains Rider live in [``install/generated/``](install/generated/).
 <!-- install-buttons:end -->
 "@
 
