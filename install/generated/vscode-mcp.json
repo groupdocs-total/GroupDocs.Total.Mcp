@@ -10,7 +10,7 @@
   "servers": {
     "groupdocs-total": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "-v", "${input:storage_path}:/data", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
+      "args": ["run", "--rm", "-i", "-v", "${input:storage_path}:/data", "-e", "GROUPDOCS_MCP_STORAGE_PATH=/data", "-e", "GROUPDOCS_MCP_OUTPUT_PATH=/data", "-e", "GROUPDOCS_LICENSE_PATH=", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
     }
   }
 }
