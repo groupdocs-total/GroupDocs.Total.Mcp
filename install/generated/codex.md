@@ -12,4 +12,4 @@ command = "docker"
 args = ["run", "--rm", "-i", "-v", "/path/to/documents:/data", "ghcr.io/groupdocs-total/total-net-mcp:latest"]
 ```
 
-Pin a version by replacing `:latest` with `:26.7.3` in the image tag.
+Pin a version by replacing `:latest` with `:26.9.0` in the image tag.
