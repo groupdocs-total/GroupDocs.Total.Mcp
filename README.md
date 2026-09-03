@@ -34,7 +34,7 @@ docker run --rm -i \
 ```
 
 Images are multi-arch (`linux/amd64` + `linux/arm64`), tagged `latest` plus an
-immutable version tag per release (e.g. `:26.7.3`). To pin, replace `:latest`
+immutable version tag per release (e.g. `:26.9.0`). To pin, replace `:latest`
 with the version tag - recommended for shared configs and CI.
 
 ## Available MCP Tools (38 total)
